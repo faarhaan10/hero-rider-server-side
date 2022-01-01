@@ -23,6 +23,7 @@ async function run() {
         const database = client.db("heroRider");
         // db collections
         const userCollection = database.collection("users");
+        const packageCollection = database.collection("packages");
 
         //post users
         app.post('/users', async (req, res) => {
@@ -40,6 +41,15 @@ async function run() {
                 isAdmin = true;
             }
             res.json({ admin: isAdmin });
+        });
+
+
+        // get all packages
+        app.get('/packages', async (req, res) => {
+            const email = req.query.email;
+            const cursor = packageCollection.find({});
+            const result = await cursor.toArray();
+            res.send(result);
         });
     }
     finally {
