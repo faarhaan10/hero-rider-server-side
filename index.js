@@ -4,6 +4,8 @@ const { MongoClient } = require('mongodb');
 const ObjectId = require("mongodb").ObjectId;
 require('dotenv').config();
 const app = express();
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
 const port = process.env.PORT || 5000;
 
 //middle weares
@@ -31,8 +33,51 @@ async function run() {
             const result = await userCollection.insertOne(doc);
             res.send(result);
         });
-        //get users
+
+        // get single user by email
         app.get('/users', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const result = await userCollection.findOne(query);
+            res.send(result);
+        });
+
+        // get all data api 
+        app.get('/users', async (req, res) => {
+            const query = parseInt(req.query?.size);
+            const cursor = userCollection.find({}).sort({ "_id": -1 });
+
+            let result;
+            if (query) {
+                result = await cursor.limit(query).toArray();
+            }
+            else {
+                result = await cursor.toArray();
+            }
+            res.send(result);
+        });
+
+
+        //block users
+        app.put('/users', async (req, res) => {
+            const doc = req.body;
+            console.log(doc)
+            // const query = { _id: ObjectId(id) };
+            // const updateDoc = { $set: doc };
+            // const options = { upsert: true };
+            // const result = await appointmentCollection.updateOne(query, updateDoc, options);
+            // res.send(result);
+        });
+
+        // //delete users
+        // app.delete('/users', async (req, res) => {
+        //     const data = req.body.selectedUsers;
+        //     console.log(req);
+        //     console.log('hit')
+        // });
+
+        //check admin
+        app.get('/admin', async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
             const user = await userCollection.findOne(query);
@@ -43,7 +88,6 @@ async function run() {
             res.json({ admin: isAdmin });
         });
 
-
         // get all packages
         app.get('/packages', async (req, res) => {
             const email = req.query.email;
@@ -51,6 +95,28 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result);
         });
+
+        // get single data api 
+        app.get('/packages/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { type: id };
+            const result = await packageCollection.findOne(query);
+            res.send(result);
+        });
+
+        //stripe payment intention
+        app.post('/create-payment-intent', async (req, res) => {
+            const paymentInfo = req.body;
+            const amount = paymentInfo.price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                payment_method_types: ['card']
+            });
+            res.json({ clientSecret: paymentIntent.client_secret })
+        });
+
+
     }
     finally {
         // await client.close();
