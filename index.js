@@ -34,47 +34,54 @@ async function run() {
             res.send(result);
         });
 
-        // get single user by email
+        // get all data api 
         app.get('/users', async (req, res) => {
+            const page = req.query.page;
+            const size = parseInt(req.query.size);
+            const cursor = userCollection.find({}).sort({ "_id": -1 });
+            const count = await cursor.count();
+
+            let result;
+            if (page) {
+                result = await cursor.skip(page * size).limit(size).toArray();
+            }
+            else {
+                result = await cursor.toArray();
+            }
+            res.send({ result, count });
+        });
+
+        // get single user by email
+        app.get('/profile', async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
             const result = await userCollection.findOne(query);
             res.send(result);
         });
 
-        // get all data api 
-        app.get('/users', async (req, res) => {
-            const query = parseInt(req.query?.size);
-            const cursor = userCollection.find({}).sort({ "_id": -1 });
 
-            let result;
-            if (query) {
-                result = await cursor.limit(query).toArray();
-            }
-            else {
-                result = await cursor.toArray();
-            }
+        //block users
+        app.put('/manage', async (req, res) => {
+            const doc = req.body;
+            const query = {
+                email: { $in: doc }
+            };
+            const updateDoc = { $set: { isBlock: true } };
+            const result = await userCollection.updateMany(query, updateDoc);
+            res.send(result);
+        });
+
+        //delete users
+        app.delete('/manage', async (req, res) => {
+            const doc = req.body;
+            const query = {
+                email: { $in: doc }
+            };
+            const result = await userCollection.deleteMany(query);
             res.send(result);
         });
 
 
-        //block users
-        app.put('/users', async (req, res) => {
-            const doc = req.body;
-            console.log(doc)
-            // const query = { _id: ObjectId(id) };
-            // const updateDoc = { $set: doc };
-            // const options = { upsert: true };
-            // const result = await appointmentCollection.updateOne(query, updateDoc, options);
-            // res.send(result);
-        });
-
-        // //delete users
-        // app.delete('/users', async (req, res) => {
-        //     const data = req.body.selectedUsers;
-        //     console.log(req);
-        //     console.log('hit')
-        // });
 
         //check admin
         app.get('/admin', async (req, res) => {
